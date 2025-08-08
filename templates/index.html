@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <!--Configurações básicas do HTML5-->
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ground Station</title>
+
+  <!--Linkar arquivos .css com os estilos da página-->
+  <link rel="stylesheet" href="../static/css/reset.css">
+  <link rel="stylesheet" href="../static/css/style.css">
+
+  <!--Importar bibliotecas html2canvas, Chart.js e Leaflet.js-->
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Adicionar Leaflet para mapas -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!--Linkar script para plotagem dos gráficos em JavaScript-->
+  <script src="../static/dinamico.js"></script>
+</head>
+
+<body>
+  <!--Cabeçalho-->
+  <header class="cabecalho">
+    <div class="cabecalho__menu_logos">
+      <!--Importar imagens das logos-->
+      <img class="cabecalho__menu__logo" src="../static/assets/logo_oficial_branca.png" alt="Logo da Czar Space">
+      <img class="cabecalho__menu__logo_horizon" src="../static/assets/patch_geraes.png" alt="Logo do Mongenot">
+    </div>
+  </header>
+
+  <!--Texto Principal-->
+  <main class="main">
+    <!--Gráficos da primeira linha-->
+    <section class="linha1">
+      <div class="chartContainer">
+        <canvas id="graficoPressao"></canvas>
+      </div>
+      <div class="chartContainer">
+        <canvas id="graficoTemperatura"></canvas>
+      </div>
+    </section>
+
+    <!--Gráficos da segunda linha-->
+    <section class="linha1">
+      <div class="chartContainer">
+        <canvas id="graficoTensaoBateria"></canvas>
+      </div>
+      <div class="chartContainer">
+        <canvas id="graficoUmidade"></canvas>
+      </div>
+    </section>
+    <!-- SEÇÃO: Mapa -->
+    <section class="linha1">
+      <div class="mapContainer">
+        <div id="mapContainer">
+          <p style="text-align: center; color: var(--cor-um); margin-bottom: 10px;">Localização do Satélite</p>
+          <div id="satelliteMap"></div>
+        </div>
+      </div>
+      <div class="chartContainer">
+        <!-- Você pode adicionar outro gráfico aqui ou deixar vazio -->
+        <canvas id="graficoAltitude"></canvas>
+      </div>
+    </section>
+    <!--Mostradores ADCS e Botão de Screenshot-->
+    <section class="linha2">
+      <div class="linha2__mostradores">
+        <p class="linha2__mostradores__mostrador">Altitude: <span class='corDados'
+            id="Altitude">-</span> m </p>
+        <button class="custom-button" id="screenshotButton">Tirar Screenshot</button>
+        <button class="custom-button" id="resetButton">Resetar Gráficos</button>
+        <p class="linha2__mostradores__mostrador">Velocidade: <span class='corDados'
+            id="Velocidade">-</span> m/s </p>
+      </div>
+    </section>
+    <!--Mostradores Tensão Painéis Solares-->
+    <section class="linha2">
+      <div class="linha2__mostradores">
+        <p class="linha2__mostradores__mostrador">Velocidade Linear (eixo X): <span class='corDados'
+            id="veloc_linear_X">-</span> m/s </p>
+        <p class="linha2__mostradores__mostrador">Velocidade Linear (eixo Y): <span class='corDados'
+            id="veloc_linear_Y">-</span> m/s </p>
+        <p class="linha2__mostradores__mostrador">Velocidade Linear (eixo Z): <span class='corDados'
+            id="veloc_linear_Z">-</span> m/s </p>
+      </div>
+    </section>
+    <!--Mostradores Corrente Painéis Solares-->
+    <section class="linha2">
+      <div class="linha2__mostradores">
+        <p class="linha2__mostradores__mostrador">Velocidade Angular (eixo X): <span class='corDados'
+            id="veloc_angular_X">-</span> m/s </p>
+        <p class="linha2__mostradores__mostrador">Velocidade Angular (eixo Y): <span class='corDados'
+            id="veloc_angular_Y">-</span> m/s </p>
+        <p class="linha2__mostradores__mostrador">Velocidade Angular (eixo Z): <span class='corDados'
+            id="veloc_angular_Z">-</span> m/s </p>
+      </div>
+    </section>
+    <!--Mostradores Potência Painéis Solares-->
+    <section class="linha2">
+      <div class="linha2__mostradores">
+        <p class="linha2__mostradores__mostrador">Campo Magnético (eixo X): <span class='corDados'
+            id="campo_mag_X">-</span> W </p>
+        <p class="linha2__mostradores__mostrador">Campo Magnético (eixo Y): <span class='corDados'
+            id="campo_mag_Y">-</span> W </p>
+        <p class="linha2__mostradores__mostrador">Campo Magnético (eixo Z): <span class='corDados'
+            id="campo_mag_Z">-</span> W </p>
+      </div>
+    </section>
+    <!--Mostrador Bateria-->
+    <section class="linha2">
+      <div id="batteryFrame">
+        <div class="batteryPercentage">
+          <p class="textoPorcentagem">Bateria do Satélite: <span class='corDados' id="batteryPercentage">-</span> % </p>
+        </div>
+        <canvas id="batteryCanvas" width="500" height="100"></canvas>
+      </div>
+      <!--Atitude 3D-->
+      <div id="AtitudeContainer"></div>
+    </section>
+    <!--Caixa de Comando-->
+    <section class="linha2">
+      <div class="linhaComando">
+        <input class="textoComando" type="text" id="commandInput" placeholder="Digite o comando">
+        <button class="custom-button" id="sendCommandButton">Enviar Comando</button>
+      </div>
+    </section>
+    
+  </main>
+
+  <!--Imagem do macaco no canto inferior direito da tela-->
+  <img class="cesar" src="../static/assets/macaco rosa png.png" alt="Icone do César">
+</body>
+
+</html>

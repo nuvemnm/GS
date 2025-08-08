@@ -1,0 +1,14 @@
+{
+    "name": "ground-station",
+    "productName": "Ground Station",
+    "version": "1.0.0",
+    "description": "Estação Solo para gerenciamento de CubeSat",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron ."
+    },
+    "autor": "Matheus Gregor",
+    "dependencies": {
+        "electron": "^37.2.4"
+    }
+}

@@ -1,0 +1,292 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100;300;600&display=swap');
+
+:root {
+    --cor-um: #b33676;
+    --cor-dois: #fdd5ea;
+    --cor-tres: #ff8fc9;
+    --cor-quatro: #49b848;
+    --cor-cinco: #b1ffb0;
+
+    --cor-background: #272727;
+
+    --fonte-um: 'Montserrat', sans-serif;
+}
+
+body{
+    box-sizing: border-box;
+}
+
+.cabecalho{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1% 10% 1% 10%;
+    background-color: var(--cor-background);
+}
+
+.cabecalho__menu_logos{
+    display: flex;
+    gap: 45px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cabecalho__menu__logo{
+    width: 70px;
+}
+
+.cabecalho__menu__logo_horizon{
+    height: 93.732px;
+}
+
+.cabecalho__menu{
+    display: flex;
+    gap: 80px;
+}
+
+.cabecalho__menu__link{
+    font-family: var(--fonte-um);
+    font-size: 24px;
+    font-weight: 300;
+    color: var(--cor-dois);
+    text-decoration: none;
+}
+
+.main{
+    padding: 1% 10% 1% 10%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: center;
+}
+
+.botao{
+    width: 150px;
+    border: 2px solid var(--cor-um);
+    color: var(--cor-um);
+    background-color: #ffffff;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.botao:hover{
+    background-color: var(--cor-um);
+    color:#ffffff;
+}   
+
+.linha1{
+    display: flex;
+    justify-content: space-between;
+}
+
+.chartContainer {
+    width: 500px;
+    height: 250px;
+    margin-bottom: 20px;
+}
+
+
+.linha2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 25px
+
+}
+
+.linha2__mostradores {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+    align-items: center;
+}
+
+.linha2__mostradores__mostrador {
+    color: var(--cor-um);
+    border: 2px solid var(--cor-um);
+    text-align: center;
+    padding: 15px 45px;
+    margin-bottom: 15px;
+    width: 100%;
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: var(--fonte-um);
+    font-weight: 600;
+}
+
+.corDados {
+    color: #49b848;
+}
+
+.custom-button {
+    color: var(--cor-um);
+    border: 2px solid var(--cor-um);
+    text-align: center;
+    padding: 15px 45px;
+    margin-bottom: 15px;
+    width: 100%;
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: var(--fonte-um);
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.custom-button:hover {
+    background-color: #b33676; /* Cor de fundo do botão ao passar o mouse por cima */
+    color: #ffffff;
+}
+
+.variacao{
+    height: 16px;
+}
+
+#batteryContainer {
+    text-align: center;
+    margin-top: 20px;
+}
+
+#batteryCanvas {
+    width: 500px;
+    height: 80px;
+    background-color: white;
+    border: 1px solid black;
+    align-items: center;
+    display: flex;
+    margin-left: 7%;
+
+}
+
+#batteryPercentage {
+    
+    color: #49b848;
+    text-align: center;
+    width: 410px;
+    font-size: 16px;
+    font-family: var(--fonte-um);
+    font-weight: 600;
+
+}
+
+.textoPorcentagem {
+    color: var(--cor-um);
+    border: 2px solid var(--cor-um);
+    text-align: center;
+    padding: 15px 45px;
+    margin-bottom: 15px;
+    width:410px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: var(--fonte-um);
+    font-weight: 600;
+    margin-left: 7%;
+}
+
+.batteryCharge {
+    outline: black;
+}
+
+.batteryRect {
+    outline: green;
+}
+
+.batteryRectWhite {
+    outline: white;
+}
+
+.batteryRectYellow {
+    fill: #ffd968;
+    outline: #ffd968;
+}
+
+.batteryRectRed {
+    fill: red;
+    outline: red;
+}
+
+.batteryText {
+    font-size: 15px;
+    font-family: var(--fonte-um);
+    font-weight: 600;
+}
+
+#AtitudeContainer {
+    
+    width: 500px;
+    height: 350px;
+    background-color: white;
+    border: 1px solid black;
+    align-items: center;
+    display: flex;
+    margin-left: 5%;
+    margin-top: 20px;
+}
+
+
+.linhaComando{
+    padding: 15px 45px;
+    gap: 10px;
+    display: flex;
+    margin: auto;
+}
+
+.textoComando{
+    color: var(--cor-um);
+    border: 2px solid var(--cor-um);
+    text-align: center;
+    padding: 15px 45px;
+    margin-bottom: 15px;
+    width: 100%;
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: var(--fonte-um);
+    font-weight: 600;
+}
+
+.cesar{
+    position: fixed;
+    bottom: 2px;
+    right: 2px;
+    width: 40px
+}
+
+.mapContainer {
+    width: 700px;
+    height: 450px;
+    margin-bottom: 20px;
+    border: 2px solid var(--cor-um);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    margin-top: 10px;
+    margin-left: 450px;
+    
+}
+
+#mapContainer {
+    width: 100%;
+    text-align: center; /* ✅ Centraliza o texto */
+}
+
+#satelliteMap {
+    width: 100%;
+    height: 400px;
+    border-radius: 4px;
+    margin: 0 auto;
+}
+
+/* Estilo para o marcador do satélite */
+.satellite-marker {
+    background-color: #ff0000;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+}
+
+/* Estilo para a trilha do satélite */
+.satellite-trail {
+    color: #b33676;
+    stroke-width: 3;
+    opacity: 0.7;
+}
