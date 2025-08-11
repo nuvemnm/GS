@@ -49,25 +49,24 @@ document.addEventListener('DOMContentLoaded', function() {
     //Cria as varáveis usadas no programa
     ///Variáveis para armazenar dados
     var dado_pressao = [];
-    var dado_tensao_bateria = [];
+    var dado_altitude = [];
     var dado_temperatura = [];
     var dado_umidade = [];
     var dado_longitude = [];
     var dado_latitude = [];
     
-    // NOVO: Variáveis para o mapa
-    var satelliteMap;
-    var satelliteMarker;
+    // Variáveis para o mapa
+    var map;
+    var marcador;
     var satelliteTrail = [];
     var trailPolyline;
-
 
     ///Variáveis para determinar um máximo de pontos possíveis nos gráficos
     var maximoPontos = 1000;
     const valorMinimo = 0;
 
     ///Variáveis para montar os mostradores
-    var valor_altitude = document.getElementById('Altitude');
+    var valor_tensao_bateria = document.getElementById('Tensao_Bateria');
     var valor_velocidade = document.getElementById('Velocidade');
     /*
     var valorCube_Rotation_XElemento = document.getElementById('valorCube_Rotation_X');
@@ -95,12 +94,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     //Função para atualizar o gráfico de temperatura externa
-    function atualizarGrafico_TensaoBateria() {
+    function atualizarGrafico_Altitude() {
         console.log('Updating charts...');
         ///Atualiza o gráfico de temperatura externa
-        graficoTensaoBateria.data.labels = Array.from({length: dado_tensao_bateria.length},(_, i) => (valorMinimo + i).toString());
-        graficoTensaoBateria.data.datasets[0].data = dado_tensao_bateria;
-        graficoTensaoBateria.update();
+        graficoAltitude.data.labels = Array.from({length: dado_altitude.length},(_, i) => (valorMinimo + i).toString());
+        graficoAltitude.data.datasets[0].data = dado_altitude;
+        graficoAltitude.update();
 
     }
 
@@ -172,69 +171,91 @@ document.addEventListener('DOMContentLoaded', function() {
         requestAnimationFrame(smoothRotate);
     }
 
-    // NOVO: Inicializar o mapa
     function initializeMap() {
-        // Criar o mapa centrado no Brasil
-        satelliteMap = L.map('satelliteMap').setView([-15.7797, -47.9297], 6);
+        try {
+            // Criar o mapa centrado no Brasil (ajustar conforme sua região)
+            map = L.map('map').setView([-15.7797, -47.9297], 8);
 
-        // Adicionar camada do mapa (OpenStreetMap)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(satelliteMap);
+            // ✅ CONFIGURAR: Tiles OFFLINE locais
+            L.tileLayer('/static/Tiles/{z}/{x}/{y}.png', {
+                attribution: 'Mapa Offline',
+                maxZoom: 18,
+                minZoom: 6,
+                // ✅ IMPORTANTE: Definir bounds da região que você baixou
+                bounds: [
+                    [-20.0, -50.0],  // Sudoeste [lat, lng]
+                    [-10.0, -40.0]   // Nordeste [lat, lng]
+                ]
+            }).addTo(map);
 
-        // Criar marcador inicial do satélite
-        satelliteMarker = L.circleMarker([-15.7797, -47.9297], {
-            color: '#ffffff',
-            fillColor: '#ff0000',
-            fillOpacity: 1,
-            radius: 8
-        }).addTo(satelliteMap);
+            // Criar marcador inicial do satélite
+            marcador = L.circleMarker([-15.7797, -47.9297], {
+                color: '#ffffff',
+                fillColor: '#ff0000',
+                fillOpacity: 1,
+                radius: 10,
+                stroke: true,
+                weight: 2
+            }).addTo(map);
 
-        // Adicionar popup ao marcador
-        satelliteMarker.bindPopup("<b>Satélite</b><br>Localização atual");
+            marcador.bindPopup("<b>🛰️ Satélite</b><br>Localização atual");
+            
+            console.log('Mapa inicializado com sucesso!');
+        } catch (error) {
+            console.error('Erro ao inicializar mapa:', error);
+        }
     }
 
-    // NOVO: Atualizar posição no mapa
-    function atualizarMapa(latitude, longitude, altitude) {
-        if (!satelliteMap) return;
+    // ✅ Função para atualizar posição no mapa
+    function atualizarMapa(latitude, longitude) {
+        if (!map || !marcador) {
+            console.warn('Mapa não inicializado');
+            return;
+        }
 
-        const newLatLng = [latitude, longitude];
-        
-        // Atualizar posição do marcador
-        satelliteMarker.setLatLng(newLatLng);
-        
-        // Adicionar ponto à trilha
-        satelliteTrail.push(newLatLng);
-        
-        // Manter apenas os últimos 50 pontos da trilha
-        if (satelliteTrail.length > 50) {
-            satelliteTrail.shift();
+        try {
+            const newLatLng = [latitude, longitude];
+            
+            // Atualizar posição do marcador
+            marcador.setLatLng(newLatLng);
+            
+            // Adicionar ponto à trilha
+            satelliteTrail.push(newLatLng);
+            
+            // Manter apenas os últimos 30 pontos da trilha
+            if (satelliteTrail.length > 30) {
+                satelliteTrail.shift();
+            }
+            
+            // Remover trilha anterior
+            if (trailPolyline) {
+                map.removeLayer(trailPolyline);
+            }
+            
+            // Desenhar nova trilha
+            if (satelliteTrail.length > 1) {
+                trailPolyline = L.polyline(satelliteTrail, {
+                    color: '#b33676',
+                    weight: 3,
+                    opacity: 0.8
+                }).addTo(map);
+            }
+            
+            // Centralizar mapa na nova posição
+            map.setView(newLatLng, map.getZoom());
+            
+            // Atualizar popup
+            marcador.setPopupContent(
+                `<b>🛰️ Satélite</b><br>
+                 Lat: ${latitude.toFixed(6)}°<br>
+                 Lng: ${longitude.toFixed(6)}°<br>
+                 <small>Offline</small>`
+            );
+            
+            console.log(`Posição atualizada: ${latitude}, ${longitude}`);
+        } catch (error) {
+            console.error('Erro ao atualizar mapa:', error);
         }
-        
-        // Remover trilha anterior
-        if (trailPolyline) {
-            satelliteMap.removeLayer(trailPolyline);
-        }
-        
-        // Desenhar nova trilha
-        if (satelliteTrail.length > 1) {
-            trailPolyline = L.polyline(satelliteTrail, {
-                color: '#b33676',
-                weight: 3,
-                opacity: 0.7
-            }).addTo(satelliteMap);
-        }
-        
-        // Centralizar mapa na nova posição
-        satelliteMap.setView(newLatLng, satelliteMap.getZoom());
-        
-        // Atualizar popup com informações atuais
-        satelliteMarker.setPopupContent(
-            `<b>Satélite</b><br>
-             Lat: ${latitude.toFixed(6)}°<br>
-             Lng: ${longitude.toFixed(6)}°<br>
-             Alt: ${altitude.toFixed(2)}m`
-        );
     }
     /*
     // Função para atualizar a atitude
@@ -289,14 +310,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     atualizarGrafico_Pressao();
                 }
     
-                // Tensão Bateria
-                if (isDataPresent(data, 'tensao_bateria')) {
-                    var tensao_bateria = data.tensao_bateria;
-                    dado_tensao_bateria.push(tensao_bateria);
-                    if (dado_tensao_bateria.length > maximoPontos) {
-                        dado_tensao_bateria.shift();
+                // Altitude
+                if (isDataPresent(data, 'altitude')) {
+                    var altitude = data.altitude;
+                    dado_altitude.push(altitude);
+                    if (dado_altitude.length > maximoPontos) {
+                        dado_altitude.shift();
                     }
-                    atualizarGrafico_TensaoBateria();
+                    atualizarGrafico_Altitude();
                     atualizaBateria();
                 }
     
@@ -320,10 +341,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     atualizarGrafico_Umidade();
                 }
 
-                // Altitude
-                if (isDataPresent(data, 'altitude')) {
-                    var altitude = data.altitude;
-                    valor_altitude.textContent = altitude.toFixed(2);
+                // Tensão Bateria
+                if (isDataPresent(data, 'tensao_bateria')) {
+                    var tensao_bateria = data.tensao_bateria;
+                    valor_tensao_bateria.textContent = tensao_bateria.toFixed(2);
                 } 
 
                 // Longitude e Latitude
@@ -332,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var latitude = data.latitude;
                     dado_longitude.textContent = longitude.toFixed(2);
                     dado_latitude.textContent = latitude.toFixed(2);
-                    atualizarMapa(latitude, longitude, altitude);
+                    atualizarMapa(latitude, longitude);
                 } 
 
                 // Velocidade 
@@ -412,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }    
 
 
-    var graficoTemperatura, graficoUmidade, graficoPressao, graficoTensaoBateria;
+    var graficoTemperatura, graficoUmidade, graficoPressao, graficoAltitude;
 
     //Cria gráfico para tensão da bateria
     graficoTemperatura = new Chart(document.getElementById('graficoTemperatura').getContext('2d'),{
@@ -535,12 +556,12 @@ document.addEventListener('DOMContentLoaded', function() {
     })
 
     //Cria gráfico para temperatura externa
-    graficoTensaoBateria = new Chart(document.getElementById('graficoTensaoBateria').getContext('2d'),{
+    graficoAltitude = new Chart(document.getElementById('graficoAltitude').getContext('2d'),{
         type: 'line',
         data: {
             labels: [],
             datasets: [{
-                label: 'Tensão Bateria (V)',
+                label: 'Altitude',
                 data: [],
                 borderColor: 'purple',
                 fill: false
@@ -588,11 +609,11 @@ document.addEventListener('DOMContentLoaded', function() {
         resetarGrafico(graficoTemperatura);
         resetarGrafico(graficoUmidade);
         resetarGrafico(graficoPressao);
-        resetarGrafico(graficoTensaoBateria);
+        resetarGrafico(graficoAltitude);
 
         // Reinicializa as listas de dados
         dado_pressao = [];
-        dado_tensao_bateria = [];
+        dado_altitude = [];
         dado_temperatura = [];
         dado_umidade = [];
 

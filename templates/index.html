@@ -50,37 +50,32 @@
     <!--Gráficos da segunda linha-->
     <section class="linha1">
       <div class="chartContainer">
-        <canvas id="graficoTensaoBateria"></canvas>
+        <canvas id="graficoAltitude"></canvas>
       </div>
       <div class="chartContainer">
         <canvas id="graficoUmidade"></canvas>
       </div>
     </section>
-    <!-- SEÇÃO: Mapa -->
-    <section class="linha1">
-      <div class="mapContainer">
-        <div id="mapContainer">
-          <p style="text-align: center; color: var(--cor-um); margin-bottom: 10px;">Localização do Satélite</p>
-          <div id="satelliteMap"></div>
-        </div>
+    <!--Mapa e mostradores de coordenadas-->
+    <section class="linha2">
+      <div class="linha2__mostradores">
+        <p class="linha2__mostradores__mostrador">Latitude: <span class="variacao" id="valorLatitude">-</span></p>
+        <p class="linha2__mostradores__mostrador">Longitude: <span id="valorLongitude">-</span></p>
       </div>
-      <div class="chartContainer">
-        <!-- Você pode adicionar outro gráfico aqui ou deixar vazio -->
-        <canvas id="graficoAltitude"></canvas>
-      </div>
+      <div id="map" class="mapa"></div>
     </section>
     <!--Mostradores ADCS e Botão de Screenshot-->
     <section class="linha2">
       <div class="linha2__mostradores">
-        <p class="linha2__mostradores__mostrador">Altitude: <span class='corDados'
-            id="Altitude">-</span> m </p>
+        <p class="linha2__mostradores__mostrador">Tensão Bateria: <span class='corDados'
+            id="Tensao_Bateria">-</span> V </p>
         <button class="custom-button" id="screenshotButton">Tirar Screenshot</button>
         <button class="custom-button" id="resetButton">Resetar Gráficos</button>
         <p class="linha2__mostradores__mostrador">Velocidade: <span class='corDados'
             id="Velocidade">-</span> m/s </p>
       </div>
     </section>
-    <!--Mostradores Tensão Painéis Solares-->
+    <!--Mostradores Velocidades Lineares-->
     <section class="linha2">
       <div class="linha2__mostradores">
         <p class="linha2__mostradores__mostrador">Velocidade Linear (eixo X): <span class='corDados'
@@ -91,7 +86,7 @@
             id="veloc_linear_Z">-</span> m/s </p>
       </div>
     </section>
-    <!--Mostradores Corrente Painéis Solares-->
+    <!--Mostradores Velocidades Angulares-->
     <section class="linha2">
       <div class="linha2__mostradores">
         <p class="linha2__mostradores__mostrador">Velocidade Angular (eixo X): <span class='corDados'
@@ -102,7 +97,7 @@
             id="veloc_angular_Z">-</span> m/s </p>
       </div>
     </section>
-    <!--Mostradores Potência Painéis Solares-->
+    <!--Mostradores Campo Magnético-->
     <section class="linha2">
       <div class="linha2__mostradores">
         <p class="linha2__mostradores__mostrador">Campo Magnético (eixo X): <span class='corDados'
