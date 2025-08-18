@@ -1,15 +1,21 @@
+# -*- coding: utf-8 -*-
+# Importa as bibliotecas necessárias para o servidor Flask, comunicação serial e threading.
 from flask import Flask, request, render_template, jsonify
 import serial
 import threading
 import math
+import time
 
-dados_HK = []  # Dados HouseKeeping
-dados_IN = []  # Dados Inerciais
+# --- Variáveis Globais ---
+# Os dados coletados pela thread de leitura serão armazenados aqui.
+dados_HK = []
+dados_IN = []
 arduino_connected = False
+ser = None # Variável para a porta serial
 
-# Últimos valores válidos (inicializar com valores padrão)
+# Últimos valores válidos (usados para substituir dados corrompidos)
+# A estrutura de dados de "últimos valores" deve ser um dicionário para fácil acesso.
 ultimo_HK = {
-    'HK' : 'HK',
     'temperatura': 0.0,
     'pressao': 0.0,
     'altitude': 0.0,
@@ -21,295 +27,178 @@ ultimo_HK = {
 }
 
 ultimo_IN = {
-    'IN' : 'IN', 'accelX': 0.0, 'accelY': 0.0, 'accelZ': 0.0,
+    'accelX': 0.0, 'accelY': 0.0, 'accelZ': 0.0,
     'magX': 0.0, 'magY': 0.0, 'magZ': 0.0,
     'gyroX': 0.0, 'gyroY': 0.0, 'gyroZ': 0.0
 }
 
-def verifica_nulo(valor, ultimo_valor_valido, nome_campo):
+# --- Funções de Ajuda ---
+def verifica_nulo(valor_str, ultimo_valor_valido, nome_campo):
     """
-    Verifica se o valor é NaN e substitui pelo último valor válido
+    Verifica se o valor é válido e, se não for, retorna o último valor válido.
+    
+    Args:
+        valor_str (str): A string do valor lido da porta serial.
+        ultimo_valor_valido (float): O último valor válido conhecido para esse campo.
+        nome_campo (str): O nome do campo para depuração.
+
+    Returns:
+        float: O valor numérico válido ou o último valor válido.
     """
     try:
-        # Converte para float
-        valor_float = float(valor)
-        
-        # Verifica se é NaN
+        valor_float = float(valor_str)
         if math.isnan(valor_float):
-            print(f"{nome_campo}: NaN detectado, usando último valor válido: {ultimo_valor_valido}")
+            print(f"[{nome_campo}]: Valor NaN detectado, usando último valor válido: {ultimo_valor_valido}")
             return ultimo_valor_valido
         else:
-            # Valor válido, atualiza o último valor
             return valor_float
-            
     except (ValueError, TypeError):
-        print(f"{nome_campo}: Erro de conversão, usando último valor válido: {ultimo_valor_valido}")
+        print(f"[{nome_campo}]: Erro de conversão, usando último valor válido: {ultimo_valor_valido}")
         return ultimo_valor_valido
-    
-while True:
-    try:  # Tenta se conectar, se conseguir, o loop se encerra
-        ser = serial.Serial('COM7', 9600)
-        print('Arduino conectado')
 
-        break
-
-    except:
-        pass
-
-
-
-def save_dados_HK(temperatura, pressao, altitude, tensao_bateria, umidade, latitude, longitude, velocidade):
+def save_dados_HK(data_dict):
+    """Salva os dados de HouseKeeping em um arquivo."""
     with open("house_keeping.txt", "a") as file:
-        data_line = f"{temperatura}, {pressao}, {altitude},{tensao_bateria}, {umidade}, {latitude}, {longitude}, {velocidade}\n"
-        file.write(data_line)
+        file.write(
+            f"{data_dict['temperatura']},{data_dict['pressao']},{data_dict['altitude']},"
+            f"{data_dict['tensao_bateria']},{data_dict['umidade']},"
+            f"{data_dict['latitude']},{data_dict['longitude']},{data_dict['velocidade']}\n"
+        )
 
-def save_dados_IN(accelX, accelY, accelZ, magX, magY, magZ, gyroX, gyroY, gyroZ):
+def save_dados_IN(data_dict):
+    """Salva os dados Inerciais em um arquivo."""
     with open("inercial.txt", "a") as file:
-        data_line = f"{accelX}, {accelY}, {accelZ}, {magX}, {magY}, {magZ}, {gyroX}, {gyroY}, {gyroZ}\n"
-        file.write(data_line)
+        file.write(
+            f"{data_dict['accelX']},{data_dict['accelY']},{data_dict['accelZ']},"
+            f"{data_dict['magX']},{data_dict['magY']},{data_dict['magZ']},"
+            f"{data_dict['gyroX']},{data_dict['gyroY']},{data_dict['gyroZ']}\n"
+        )
 
+# --- Funções de Leitura e Processamento ---
+def read_data():
+    """
+    Função principal que roda em uma thread para ler dados da porta serial.
+    Ela tenta se conectar e, uma vez conectada, lê e processa as linhas de dados.
+    """
+    global dados_HK, dados_IN, arduino_connected, ser, ultimo_HK, ultimo_IN
+    
+    # Loop para tentar a conexão serial continuamente até ter sucesso
+    while True:
+        try:
+            # CORREÇÃO CRÍTICA: Mude a taxa de baud para 115200 para coincidir com o código do ESP.
+            ser = serial.Serial('COM8', 9600, timeout=1) 
+            print('Conexão serial estabelecida!')
+            arduino_connected = True
+            break
+        except serial.SerialException as e:
+            print(f"Erro ao conectar à porta serial: {e}. Tentando novamente em 3 segundos...")
+            time.sleep(3)
 
-# Cria servidor Flask
+    # Loop principal para ler dados após a conexão
+    while arduino_connected:
+        try:
+            # Lê a linha completa e decodifica para string
+            data = ser.readline().decode('utf-8').strip()
+            
+            if data:
+                print(f"Lido: {data}")
+                
+                # Divide a linha em partes separadas por espaço
+                parts = data.split(' ')
+
+                # Processa os dados HK
+                if parts[0] == "HK" and len(parts) == 9:
+                    # Cria um dicionário com os novos valores para facilitar a manipulação
+                    new_hk_data = {
+                        'temperatura': verifica_nulo(parts[1], ultimo_HK['temperatura'], 'temperatura'),
+                        'pressao': verifica_nulo(parts[2], ultimo_HK['pressao'], 'pressao'),
+                        'altitude': verifica_nulo(parts[3], ultimo_HK['altitude'], 'altitude'),
+                        'tensao_bateria': verifica_nulo(parts[4], ultimo_HK['tensao_bateria'], 'tensao_bateria'),
+                        'umidade': verifica_nulo(parts[5], ultimo_HK['umidade'], 'umidade'),
+                        'latitude': verifica_nulo(parts[6], ultimo_HK['latitude'], 'latitude'),
+                        'longitude': verifica_nulo(parts[7], ultimo_HK['longitude'], 'longitude'),
+                        'velocidade': verifica_nulo(parts[8], ultimo_HK['velocidade'], 'velocidade')
+                    }
+                    
+                    # Atualiza os dados globais e salva no arquivo
+                    ultimo_HK.update(new_hk_data)
+                    dados_HK = list(new_hk_data.values())
+                    save_dados_HK(new_hk_data)
+                
+                # Processa os dados IN
+                elif parts[0] == "IN" and len(parts) == 10:
+                    new_in_data = {
+                        'accelX': verifica_nulo(parts[1], ultimo_IN['accelX'], 'accelX'),
+                        'accelY': verifica_nulo(parts[2], ultimo_IN['accelY'], 'accelY'),
+                        'accelZ': verifica_nulo(parts[3], ultimo_IN['accelZ'], 'accelZ'),
+                        'magX': verifica_nulo(parts[4], ultimo_IN['magX'], 'magX'),
+                        'magY': verifica_nulo(parts[5], ultimo_IN['magY'], 'magY'),
+                        'magZ': verifica_nulo(parts[6], ultimo_IN['magZ'], 'magZ'),
+                        'gyroX': verifica_nulo(parts[7], ultimo_IN['gyroX'], 'gyroX'),
+                        'gyroY': verifica_nulo(parts[8], ultimo_IN['gyroY'], 'gyroY'),
+                        'gyroZ': verifica_nulo(parts[9], ultimo_IN['gyroZ'], 'gyroZ')
+                    }
+                    
+                    # Atualiza os dados globais e salva no arquivo
+                    ultimo_IN.update(new_in_data)
+                    dados_IN = list(new_in_data.values())
+                    save_dados_IN(new_in_data)
+
+        except serial.SerialException:
+            print("Conexão serial perdida. Tentando reconectar...")
+            arduino_connected = False
+            ser.close()
+            # O loop externo tentará a reconexão
+            break
+        except Exception as e:
+            print(f"Erro inesperado durante a leitura de dados: {e}")
+            
+# --- Servidor Flask e Rotas ---
 app = Flask(__name__)
-
-# Abre a rota '/' no servidor Flask para rodar a página 'index.html'
-
 
 @app.route('/')
 def index():
+    """Rota para servir a página principal."""
     return render_template('index.html')
-
-# Abre a rota '/sensorData' no servidor Flask para rodar a função get_sensor_data(), que coleta os dados do servidor Socket
-
 
 @app.route('/sensorData')
 def get_sensor_data():
+    """
+    Rota que retorna os últimos dados coletados em formato JSON.
+    Esta função agora apenas acessa as variáveis globais que são atualizadas
+    pela thread de leitura.
+    """
     global dados_HK
     global dados_IN
-    global ultimo_HK
-    global ultimo_IN
 
-    if dados_HK is None:
-        return jsonify(error="Falha na coleta de dados de House Keeping")
+    # Junta os dados HK e IN em um único dicionário para o JSON
+    print("Verificando coisa MUITO FODA "+ dados_HK[0])
+    data_to_send = {
+        'temperatura': dados_HK[1], 'pressao': dados_HK[2], 'altitude': dados_HK[3],
+        'tensao_bateria': dados_HK[4], 'umidade': dados_HK[5], 'latitude': dados_HK[6],
+        'longitude': dados_HK[7], 'velocidade': dados_HK[8],
+        'accelX': dados_IN[0], 'accelY': dados_IN[1], 'accelZ': dados_IN[2],
+        'magX': dados_IN[3], 'magY': dados_IN[4], 'magZ': dados_IN[5],
+        'gyroX': dados_IN[6], 'gyroY': dados_IN[7], 'gyroZ': dados_IN[8]
+    }
 
-    if dados_IN is None:
-        return jsonify(error="Falha na coleta de dados Inerciais")
+    return jsonify(data_to_send)
 
-    # Inicialize todas as variáveis com valores padrão ou None
-    temperatura, pressao, altitude, tensao_bateria, umidade, latitude, longitude, velocidade = [None] * 8
-    accelX, accelY, accelZ, magX, magY, magZ, gyroX, gyroY, gyroZ = [None] * 9
-
-    print(dados_IN[0])
-    # Tente converter os valores, atribuindo aos dados apenas se a conversão for bem-sucedida
-    try:
-        temperatura = float(dados_HK[0])
-    except (IndexError, ValueError):
-        print("Erro ao converter temperatura")
-
-    try:
-        pressao = float(dados_HK[1])
-    except (IndexError, ValueError):
-        print("Erro ao converter pressão")
-
-    try:
-        altitude = float(dados_HK[2])
-    except (IndexError, ValueError):
-        print("Erro ao converter altitude")
-
-    try:
-        tensao_bateria = float(dados_HK[3])
-    except (IndexError, ValueError):
-        print("Erro ao converter Tensão da Bateria")
-
-    try:
-        umidade = float(dados_HK[4])
-    except (IndexError, ValueError):
-        print("Erro ao converter Umidade")
-
-    try:
-        latitude = float(dados_HK[5])
-    except (IndexError, ValueError):
-        print("Erro ao converter Latitude")
-
-    try:
-        longitude = float(dados_HK[6])
-    except (IndexError, ValueError):
-        print("Erro ao converter Longitude")
-
-    try:
-        velocidade = float(dados_HK[7])
-    except (IndexError, ValueError):
-        print("Erro ao converter Velocidade")
-
-    try:
-        accelX = float(dados_IN[0])
-    except (IndexError, ValueError):
-        print("Erro ao converter Corrente_Painel_1")
-
-    try:
-        accelY = float(dados_IN[1])
-    except (IndexError, ValueError):
-        print("Erro ao converter Corrente_Painel_2")
-
-    try:
-        accelZ = float(dados_IN[2])
-    except (IndexError, ValueError):
-        print("Erro ao converter Corrente_Painel_3")
-
-    try:
-        magX = float(dados_IN[3])
-    except (IndexError, ValueError):
-        print("Erro ao converter Corrente_Painel_4")
-
-    try:
-        magY = float(dados_IN[4])
-    except (TypeError, ValueError):
-        print("Erro ao calcular Potencia_Painel_1")
-
-    try:
-        magZ = float(dados_IN[5])
-    except (TypeError, ValueError):
-        print("Erro ao calcular Potencia_Painel_2")
-
-    try:
-        gyroX = float(dados_IN[6])
-    except (TypeError, ValueError):
-        print("Erro ao calcular Potencia_Painel_3")
-
-    try:
-        gyroY = float(dados_IN[7])
-    except (TypeError, ValueError):
-        print("Erro ao calcular Potencia_Painel_4")
-
-    try:
-        gyroZ = float(dados_IN[8])
-    except (IndexError, ValueError):
-        print("Erro ao converter Velocidade_Angular")
-
-    # Envia para o servidor Flask os dados
-    return jsonify(temperatura = temperatura, pressao = pressao, altitude = altitude, tensao_bateria = tensao_bateria, 
-                   umidade = umidade, latitude = latitude, longitude = longitude, velocidade = velocidade,
-                   accelX = accelX, accelY = accelY, accelZ = accelZ,
-                   magX = magX, magY = magY, magZ = magZ, 
-                   gyroX = gyroX, gyroY = gyroY, gyroZ = gyroZ)
-
-
-'''
 @app.route('/sendCommand', methods=['POST'])
 def send_command():
     command = request.json['command']
     ser.write(command.encode())
     print("Comando: - " + command + " - enviado com sucesso!")
     return 'Comando enviado com sucesso!'
-'''
-
-# Função para ler dados do Arduino
-def read_data():
-    global dados_HK
-    global dados_IN
-    global arduino_connected
-    global ser
-
-    while True:
-        try:
-             # Lê os dados da porta serial e decodifica os dados
-            data = ser.readline().decode()
-            print(data)
-            linhas = data.split('\n')
-            dados = []
-
-            for linha in linhas:
-                l = linha.split(' ')
-                if '[SX1278]' == l[0] or 'Tempo' == l[0]:
-                    pass
-                else:
-                    dados += [linha]
-
-            for i in range(0, len(dados)-1):
-                dado = dados[i]
-
-                data = dado.split(" ")  
-
-                if data[0] == "HK":
-                    try:
-                        valores = data[1:9]  # Corrigir índices para 8 valores
-                        
-                        # Aplicar tratamento de NaN para cada valor
-                        temperatura = verifica_nulo(valores[0], ultimo_HK['temperatura'], 'temperatura')
-                        pressao = verifica_nulo(valores[1], ultimo_HK['pressao'], 'pressao')
-                        altitude = verifica_nulo(valores[2], ultimo_HK['altitude'], 'altitude')
-                        tensao_bateria = verifica_nulo(valores[3], ultimo_HK['tensao_bateria'], 'tensao_bateria')
-                        umidade = verifica_nulo(valores[4], ultimo_HK['umidade'], 'umidade')
-                        latitude = verifica_nulo(valores[5], ultimo_HK['latitude'], 'latitude')
-                        longitude = verifica_nulo(valores[6], ultimo_HK['longitude'], 'longitude')
-                        velocidade = verifica_nulo(valores[7], ultimo_HK['velocidade'], 'velocidade')
-
-                        # Atualizar últimos valores válidos
-                        ultimo_HK.update({
-                            'temperatura': temperatura,
-                            'pressao': pressao,
-                            'altitude': altitude,
-                            'tensao_bateria': tensao_bateria,
-                            'umidade': umidade,
-                            'latitude': latitude,
-                            'longitude': longitude,
-                            'velocidade': velocidade
-                        })
-
-                        # Atualizar dados globais
-                        dados_HK = [temperatura, pressao, altitude, tensao_bateria, 
-                                umidade, latitude, longitude, velocidade]
-                        
-                        save_dados_HK(temperatura, pressao, altitude, tensao_bateria, 
-                                    umidade, latitude, longitude, velocidade)
-
-                        #print(f"Dados HK processados!")
-
-                    except (ValueError, IndexError) as e:
-                        print(f"Erro ao processar dados HK: {e}")
-
-                if data[0] == "IN":
-                    try:
-                        valores = data[1:10]  # 9 valores inerciais
-                        
-                        # Aplicar tratamento de NaN para dados inerciais
-                        accelX = verifica_nulo(valores[0], ultimo_IN['accelX'], 'accelX')
-                        accelY = verifica_nulo(valores[1], ultimo_IN['accelY'], 'accelY')
-                        accelZ = verifica_nulo(valores[2], ultimo_IN['accelZ'], 'accelZ')
-                        magX = verifica_nulo(valores[3], ultimo_IN['magX'], 'magX')
-                        magY = verifica_nulo(valores[4], ultimo_IN['magY'], 'magY')
-                        magZ = verifica_nulo(valores[5], ultimo_IN['magZ'], 'magZ')
-                        gyroX = verifica_nulo(valores[6], ultimo_IN['gyroX'], 'gyroX')
-                        gyroY = verifica_nulo(valores[7], ultimo_IN['gyroY'], 'gyroY')
-                        gyroZ = verifica_nulo(valores[8], ultimo_IN['gyroZ'], 'gyroZ')
-
-                        # Atualizar últimos valores válidos
-                        ultimo_IN.update({
-                            'accelX': accelX, 'accelY': accelY, 'accelZ': accelZ,
-                            'magX': magX, 'magY': magY, 'magZ': magZ,
-                            'gyroX': gyroX, 'gyroY': gyroY, 'gyroZ': gyroZ
-                        })
-
-                        dados_IN = [accelX, accelY, accelZ, magX, magY, magZ, gyroX, gyroY, gyroZ]
-                        save_dados_IN(accelX, accelY, accelZ, magX, magY, magZ, gyroX, gyroY, gyroZ)
-
-                        #print(f"Dados IN processados!")
-                    
-                    except (ValueError, IndexError) as e:
-                        print(f"Erro ao processar dados IN: {e}")
-
-        except KeyboardInterrupt:
-            # Encerra o loop quando o usuário pressionar Ctrl+C
-            ser.close()
-            arduino_connected = False
-            break
 
 
-# Inicia a thread para ler dados do Arduino
-arduino_thread = threading.Thread(target=read_data)
-arduino_thread.daemon = True
-arduino_thread.start()
-
-# Roda o servidor Flask
+# --- Inicialização da Aplicação ---
 if __name__ == '__main__':
-    app.run()
+    # Inicia a thread para ler dados do Arduino
+    # Ela roda em segundo plano e não bloqueia o servidor Flask
+    arduino_thread = threading.Thread(target=read_data)
+    arduino_thread.daemon = True # Permite que a thread seja fechada quando o programa principal terminar
+    arduino_thread.start()
+
+    # Roda o servidor Flask
+    app.run(debug=True)

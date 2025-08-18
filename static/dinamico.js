@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var trailPolyline;
 
     ///Variáveis para determinar um máximo de pontos possíveis nos gráficos
-    var maximoPontos = 1000;
+    var maximoPontos = 100;
     const valorMinimo = 0;
 
     ///Variáveis para montar os mostradores
@@ -171,17 +171,18 @@ document.addEventListener('DOMContentLoaded', function() {
         requestAnimationFrame(smoothRotate);
     }
 
+    // Função de Criação e atuaização do Mapa do GPS
     function initializeMap() {
         try {
             // Criar o mapa centrado no Brasil (ajustar conforme sua região)
-            map = L.map('map').setView([-15.7797, -47.9297], 8);
+            map = L.map('map').setView([-23.3568, -47.8574], 8);
 
-            // ✅ CONFIGURAR: Tiles OFFLINE locais
+            //  CONFIGURAR: Tiles OFFLINE locais
             L.tileLayer('/static/Tiles/{z}/{x}/{y}.png', {
                 attribution: 'Mapa Offline',
                 maxZoom: 18,
                 minZoom: 6,
-                // ✅ IMPORTANTE: Definir bounds da região que você baixou
+                //  IMPORTANTE: Definir bounds da região que você baixou
                 bounds: [
                     [-20.0, -50.0],  // Sudoeste [lat, lng]
                     [-10.0, -40.0]   // Nordeste [lat, lng]
@@ -200,13 +201,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             marcador.bindPopup("<b>🛰️ Satélite</b><br>Localização atual");
             
-            console.log('Mapa inicializado com sucesso!');
+            console.log('Mapa offline inicializado com sucesso!');
         } catch (error) {
             console.error('Erro ao inicializar mapa:', error);
         }
     }
 
-    // ✅ Função para atualizar posição no mapa
     function atualizarMapa(latitude, longitude) {
         if (!map || !marcador) {
             console.warn('Mapa não inicializado');
@@ -295,6 +295,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (sensorData && sensorData[sensorName] !== undefined) {
                         return true;
                     } else {
+                        console.log(sensorData[sensorName] + ", " + sensorName);
                         console.error(`Dados do sensor de ${sensorName} incompletos ou ausentes.`);
                         return false;
                     }
@@ -318,7 +319,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         dado_altitude.shift();
                     }
                     atualizarGrafico_Altitude();
-                    atualizaBateria();
                 }
     
                 // Temperatura
@@ -345,6 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isDataPresent(data, 'tensao_bateria')) {
                     var tensao_bateria = data.tensao_bateria;
                     valor_tensao_bateria.textContent = tensao_bateria.toFixed(2);
+                    atualizaBateria();
                 } 
 
                 // Longitude e Latitude
@@ -685,7 +686,7 @@ document.addEventListener('DOMContentLoaded', function() {
             final += 5;
         }
     } 
-
+    /*
     // Cria o bloco da atitude
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(90, 500 / 350, 0.1, 1000);
@@ -719,9 +720,9 @@ document.addEventListener('DOMContentLoaded', function() {
     cubeGroup.add(cube);
     cubeGroup.add(edgesMesh);
     scene.add(cubeGroup);
-    
+    */
     // NOVO: Inicializar mapa após carregar página
-    initializeMap();
+    //initializeMap();
     //Chama função para pegar novos dados
     fetchSensorData();
     //Define pausa entre as chamadas da função
