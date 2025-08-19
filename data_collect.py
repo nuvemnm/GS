@@ -34,17 +34,7 @@ ultimo_IN = {
 
 # --- Funções de Ajuda ---
 def verifica_nulo(valor_str, ultimo_valor_valido, nome_campo):
-    """
-    Verifica se o valor é válido e, se não for, retorna o último valor válido.
-    
-    Args:
-        valor_str (str): A string do valor lido da porta serial.
-        ultimo_valor_valido (float): O último valor válido conhecido para esse campo.
-        nome_campo (str): O nome do campo para depuração.
 
-    Returns:
-        float: O valor numérico válido ou o último valor válido.
-    """
     try:
         valor_float = float(valor_str)
         if math.isnan(valor_float):
@@ -55,6 +45,7 @@ def verifica_nulo(valor_str, ultimo_valor_valido, nome_campo):
     except (ValueError, TypeError):
         print(f"[{nome_campo}]: Erro de conversão, usando último valor válido: {ultimo_valor_valido}")
         return ultimo_valor_valido
+
 
 def save_dados_HK(data_dict):
     """Salva os dados de HouseKeeping em um arquivo."""
@@ -80,13 +71,18 @@ def read_data():
     Função principal que roda em uma thread para ler dados da porta serial.
     Ela tenta se conectar e, uma vez conectada, lê e processa as linhas de dados.
     """
-    global dados_HK, dados_IN, arduino_connected, ser, ultimo_HK, ultimo_IN
+    global dados_HK
+    global dados_IN
+    global arduino_connected
+    global ser
+    global ultimo_HK
+    global ultimo_IN
     
     # Loop para tentar a conexão serial continuamente até ter sucesso
     while True:
         try:
             # CORREÇÃO CRÍTICA: Mude a taxa de baud para 115200 para coincidir com o código do ESP.
-            ser = serial.Serial('COM8', 9600, timeout=1) 
+            ser = serial.Serial('COM16', 9600, timeout=1) 
             print('Conexão serial estabelecida!')
             arduino_connected = True
             break
@@ -163,20 +159,19 @@ def index():
 
 @app.route('/sensorData')
 def get_sensor_data():
-    """
-    Rota que retorna os últimos dados coletados em formato JSON.
-    Esta função agora apenas acessa as variáveis globais que são atualizadas
-    pela thread de leitura.
-    """
+
     global dados_HK
     global dados_IN
 
-    # Junta os dados HK e IN em um único dicionário para o JSON
-    print("Verificando coisa MUITO FODA "+ dados_HK[0])
+    if len(dados_HK) < 8 or len(dados_IN) < 9:
+        print("Aviso: Dados incompletos. A thread de leitura pode estar se conectando ou sem dados.")
+        # Retorna um erro HTTP 503 (Serviço Indisponível)
+        return jsonify({"error": "Dados do sensor ainda não disponíveis ou incompletos."}), 503 
+
     data_to_send = {
-        'temperatura': dados_HK[1], 'pressao': dados_HK[2], 'altitude': dados_HK[3],
-        'tensao_bateria': dados_HK[4], 'umidade': dados_HK[5], 'latitude': dados_HK[6],
-        'longitude': dados_HK[7], 'velocidade': dados_HK[8],
+        'temperatura': dados_HK[0], 'pressao': dados_HK[1], 'altitude': dados_HK[2],
+        'tensao_bateria': dados_HK[3], 'umidade': dados_HK[4], 'latitude': dados_HK[5],
+        'longitude': dados_HK[6], 'velocidade': dados_HK[7],
         'accelX': dados_IN[0], 'accelY': dados_IN[1], 'accelZ': dados_IN[2],
         'magX': dados_IN[3], 'magY': dados_IN[4], 'magZ': dados_IN[5],
         'gyroX': dados_IN[6], 'gyroY': dados_IN[7], 'gyroZ': dados_IN[8]
@@ -192,6 +187,7 @@ def send_command():
     return 'Comando enviado com sucesso!'
 
 
+
 # --- Inicialização da Aplicação ---
 if __name__ == '__main__':
     # Inicia a thread para ler dados do Arduino
@@ -199,6 +195,5 @@ if __name__ == '__main__':
     arduino_thread = threading.Thread(target=read_data)
     arduino_thread.daemon = True # Permite que a thread seja fechada quando o programa principal terminar
     arduino_thread.start()
-
     # Roda o servidor Flask
     app.run(debug=True)
