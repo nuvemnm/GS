@@ -15,11 +15,11 @@ void setup() {
 void loop() {
   // Geração e envio dos dados HK
   sendHKData();
-  delay(1000); // Envia a cada 1 segundo
+  delay(3000); // Envia a cada 1 segundo
 
   // Geração e envio dos dados IN
   sendINData();
-  delay(1000); // Envia a cada 1 segundo
+  delay(3000); // Envia a cada 1 segundo
 }
 
 // Parte 3: Funções para Enviar os Dados

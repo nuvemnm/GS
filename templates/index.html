@@ -11,6 +11,7 @@
   <!--Linkar arquivos .css com os estilos da página-->
   <link rel="stylesheet" href="../static/css/reset.css">
   <link rel="stylesheet" href="../static/css/style.css">
+  <link rel="stylesheet" href="/static/css/leaflet.css" />
 
   <!--Importar bibliotecas html2canvas, Chart.js e Leaflet.js-->
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -18,8 +19,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
   <!-- Adicionar Leaflet para mapas -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/static/leaflet.js"></script>
 
   <!--Linkar script para plotagem dos gráficos em JavaScript-->
   <script src="../static/dinamico.js"></script>
@@ -56,15 +56,7 @@
         <canvas id="graficoUmidade"></canvas>
       </div>
     </section>
-    <!--Mapa e mostradores de coordenadas
-    <section class="linha2">
-      <div class="linha2__mostradores">
-        <p class="linha2__mostradores__mostrador">Latitude: <span class="variacao" id="valorLatitude">-</span></p>
-        <div id="map" class="mapa"></div>
-        <p class="linha2__mostradores__mostrador">Longitude: <span id="valorLongitude">-</span></p>
-      </div>
-    </section>
-    -->
+   
     <!--Mostradores ADCS e Botão de Screenshot-->
     <section class="linha2">
       <div class="linha2__mostradores">
@@ -117,9 +109,7 @@
         </div>
         <canvas id="batteryCanvas" width="500" height="100"></canvas>
       </div>
-      <!--Atitude 3D
-      <div id="AtitudeContainer"></div>
-      -->
+      
     </section>
     <!--Caixa de Comando-->
     <section class="linha2">
@@ -128,6 +118,7 @@
         <button class="custom-button" id="sendCommandButton">Enviar Comando</button>
       </div>
     </section>
+    <div id="map"></div>
     
   </main>
 

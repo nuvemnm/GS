@@ -56,10 +56,37 @@ document.addEventListener('DOMContentLoaded', function() {
     var dado_latitude = [];
     
     // Variáveis para o mapa
-    var map;
-    var marcador;
-    var satelliteTrail = [];
-    var trailPolyline;
+    // Coordenadas iniciais (centro do mapa)
+    const latInicial = -22.3568;
+    const lonInicial = -49.8574;
+
+    // 1. Inicializa o mapa
+    // 'setView' define o centro e o nível de zoom inicial
+    const map = L.map('map').setView([latInicial, lonInicial], 13);
+
+    // 2. A PARTE MAIS IMPORTANTE: Carregar os tiles locais
+    L.tileLayer(
+        // O URL aponta para a pasta 'static' do seu servidor Flask
+        '/static/tiles/{z}/{x}/{y}.png', 
+        {
+            // Informação de atribuição (mude conforme a fonte dos seus tiles)
+            attribution: 'Map data &copy; OpenStreetMap contributors',
+            
+            // Defina o zoom mínimo e máximo que você baixou
+            minZoom: 10,
+            maxZoom: 18,
+            
+            // 'tms: false' é o padrão (eixo Y começa no topo). 
+            // Se seus tiles estiverem invertidos, tente 'tms: true'
+            tms: false 
+        }
+    ).addTo(map);
+
+    // 3. Adiciona um marcador (ícone) ao mapa
+    // Vamos começar com uma posição inicial e atualizá-la
+    const marker = L.marker([latInicial, lonInicial]).addTo(map);
+    marker.bindPopup("Posição Atual"); // Texto que aparece ao clicar
+
 
     ///Variáveis para determinar um máximo de pontos possíveis nos gráficos
     var maximoPontos = 100;
@@ -68,11 +95,6 @@ document.addEventListener('DOMContentLoaded', function() {
     ///Variáveis para montar os mostradores
     var valor_tensao_bateria = document.getElementById('Tensao_Bateria');
     var valor_velocidade = document.getElementById('Velocidade');
-    /*
-    var valorCube_Rotation_XElemento = document.getElementById('valorCube_Rotation_X');
-    var valorCube_Rotation_YElemento = document.getElementById('valorCube_Rotation_Y');
-    var valorCube_Rotation_ZElemento = document.getElementById('valorCube_Rotation_Z');
-    */
     var valor_accel_X = document.getElementById('veloc_linear_X');
     var valor_accel_Y = document.getElementById('veloc_linear_Y');
     var valor_accel_Z = document.getElementById('veloc_linear_Z');
@@ -147,136 +169,24 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => console.log(error));
     }
 
-    // Variáveis para armazenar as rotações atuais e alvo
-    var currentRotation = { x: 0, y: 0, z: 0 };
-    var targetRotation = { x: 0, y: 0, z: 0 };
-
-    // Função para suavizar a rotação
-    function smoothRotate() {
-
-        // Interpolar entre os valores atuais e alvo
-        currentRotation.x += (targetRotation.x - currentRotation.x) * interpolationRate;
-        currentRotation.y += (targetRotation.y - currentRotation.y) * interpolationRate;
-        currentRotation.z += (targetRotation.z - currentRotation.z) * interpolationRate;
-
-        // Aplicar as rotações suavizadas ao cubo
-        cubeGroup.rotation.x = currentRotation.x;
-        cubeGroup.rotation.y = currentRotation.y;
-        cubeGroup.rotation.z = currentRotation.z;
-
-        // Renderizar a cena
-        renderer.render(scene, camera);
-
-        // Chamar a próxima renderização
-        requestAnimationFrame(smoothRotate);
-    }
-
-    // Função de Criação e atuaização do Mapa do GPS
-    function initializeMap() {
-        try {
-            // Criar o mapa centrado no Brasil (ajustar conforme sua região)
-            map = L.map('map').setView([-23.3568, -47.8574], 8);
-
-            //  CONFIGURAR: Tiles OFFLINE locais
-            L.tileLayer('/static/Tiles/{z}/{x}/{y}.png', {
-                attribution: 'Mapa Offline',
-                maxZoom: 18,
-                minZoom: 6,
-                //  IMPORTANTE: Definir bounds da região que você baixou
-                bounds: [
-                    [-20.0, -50.0],  // Sudoeste [lat, lng]
-                    [-10.0, -40.0]   // Nordeste [lat, lng]
-                ]
-            }).addTo(map);
-
-            // Criar marcador inicial do satélite
-            marcador = L.circleMarker([-15.7797, -47.9297], {
-                color: '#ffffff',
-                fillColor: '#ff0000',
-                fillOpacity: 1,
-                radius: 10,
-                stroke: true,
-                weight: 2
-            }).addTo(map);
-
-            marcador.bindPopup("<b>🛰️ Satélite</b><br>Localização atual");
-            
-            console.log('Mapa offline inicializado com sucesso!');
-        } catch (error) {
-            console.error('Erro ao inicializar mapa:', error);
-        }
-    }
-
     function atualizarMapa(latitude, longitude) {
-        if (!map || !marcador) {
-            console.warn('Mapa não inicializado');
-            return;
-        }
-
         try {
-            const newLatLng = [latitude, longitude];
+
+            // Atualiza a posição do marcador
+            const novaPosicao = L.latLng(latitude, longitude);
+            marker.setLatLng(novaPosicao);
             
-            // Atualizar posição do marcador
-            marcador.setLatLng(newLatLng);
-            
-            // Adicionar ponto à trilha
-            satelliteTrail.push(newLatLng);
-            
-            // Manter apenas os últimos 30 pontos da trilha
-            if (satelliteTrail.length > 30) {
-                satelliteTrail.shift();
-            }
-            
-            // Remover trilha anterior
-            if (trailPolyline) {
-                map.removeLayer(trailPolyline);
-            }
-            
-            // Desenhar nova trilha
-            if (satelliteTrail.length > 1) {
-                trailPolyline = L.polyline(satelliteTrail, {
-                    color: '#b33676',
-                    weight: 3,
-                    opacity: 0.8
-                }).addTo(map);
-            }
-            
-            // Centralizar mapa na nova posição
-            map.setView(newLatLng, map.getZoom());
-            
-            // Atualizar popup
-            marcador.setPopupContent(
-                `<b>🛰️ Satélite</b><br>
-                 Lat: ${latitude.toFixed(6)}°<br>
-                 Lng: ${longitude.toFixed(6)}°<br>
-                 <small>Offline</small>`
-            );
-            
-            console.log(`Posição atualizada: ${latitude}, ${longitude}`);
+            // Opcional: Centraliza o mapa no marcador
+            map.panTo(novaPosicao);
+
+            console.log("Posição atualizada:", latitude, longitude);
+
         } catch (error) {
-            console.error('Erro ao atualizar mapa:', error);
+            console.error("Erro ao buscar localização:", error);
         }
     }
-    /*
-    // Função para atualizar a atitude
-    function atualizarAtitude() {
-        // Faz a requisição dos dados
-        fetch('/sensorData')
-            .then(response => response.json())
-            .then(data => {
-                // Taxa de interpolação (quanto menor, mais lenta é a transição entre as posições)
-                interpolationRate = data.Velocidade_Angular/100;
 
-                // Definir os novos valores de rotação
-                targetRotation.x = data.Cube_Rotation_X;
-                targetRotation.y = data.Cube_Rotation_Y;
-                targetRotation.z = data.Cube_Rotation_Z;
 
-                // Iniciar o processo de interpolação
-                smoothRotate();
-        });
-    }
-    */
     //Função para fazer a requisição dos dados ao servidor Flask
     function fetchSensorData() {
         // Faz a requisição dos dados
@@ -291,6 +201,11 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 // Defina uma função para verificar se um dado está presente
+                if (data.error) {
+                    console.warn(data.error);
+                    return; // Para a execução da função aqui e aguarda a próxima chamada
+                }
+
                 const isDataPresent = (sensorData, sensorName) => {
                     if (sensorData && sensorData[sensorName] !== undefined) {
                         return true;
@@ -361,20 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isDataPresent(data, 'velocidade')) {
                     var velocidade = data.velocidade;
                     valor_velocidade.textContent = velocidade.toFixed(2);
-                }                 
-                /*
-                // Atitude
-                if (isDataPresent(data, 'Cube_Rotation_X') && isDataPresent(data, 'Cube_Rotation_Y') && isDataPresent(data, 'Cube_Rotation_Z')) {
-                    var Cube_Rotation_X = data.Cube_Rotation_X;
-                    var Cube_Rotation_Y = data.Cube_Rotation_Y;
-                    var Cube_Rotation_Z = data.Cube_Rotation_Z;
-                    valorCube_Rotation_XElemento.textContent = Cube_Rotation_X.toFixed(2);
-                    valorCube_Rotation_YElemento.textContent = Cube_Rotation_Y.toFixed(2);
-                    valorCube_Rotation_ZElemento.textContent = Cube_Rotation_Z.toFixed(2);
-                    // Chama a função para a atitude 3D
-                    atualizarAtitude();   
-                 }  
-                */
+                }     
                 // Tensao Painel 1
                 if (isDataPresent(data, 'accelX')) {
                     var accelX = data.accelX;
@@ -618,12 +520,6 @@ document.addEventListener('DOMContentLoaded', function() {
         dado_temperatura = [];
         dado_umidade = [];
 
-        // NOVO: Limpar trilha do satélite
-        satelliteTrail = [];
-        if (trailPolyline) {
-            satelliteMap.removeLayer(trailPolyline);
-        }
-
     });
 
     //Cria mostrador da bateria
@@ -686,45 +582,8 @@ document.addEventListener('DOMContentLoaded', function() {
             final += 5;
         }
     } 
-    /*
-    // Cria o bloco da atitude
-    var scene = new THREE.Scene();
-    var camera = new THREE.PerspectiveCamera(90, 500 / 350, 0.1, 1000);
-    camera.position.x = 0;
-    camera.position.y = 0;
-    camera.position.z = 4;
-    var renderer = new THREE.WebGLRenderer();
-    renderer.setSize(500, 350);
-    renderer.setClearColor(0xd3d3d3);
-    document.getElementById('AtitudeContainer').appendChild(renderer.domElement);
 
-    // Adicionar iluminação
-    var ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-    var directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    directionalLight.position.set(1, -1, 5);
-    scene.add(directionalLight);
-
-    // Adicionar um cubo como satélite
-    var geometry = new THREE.BoxGeometry(2, 2, 4);
-    var material = new THREE.MeshBasicMaterial({ color: 0xb33676 , specular: 0x000000, shininess: 30});
-    var cube = new THREE.Mesh(geometry, material);
-
-    // Adiciona as arestas coloridas
-    var edges = new THREE.EdgesGeometry(geometry);
-    var edgesMaterial = new THREE.LineBasicMaterial({ color: 0x000000 }); // Cor das arestas
-    var edgesMesh = new THREE.LineSegments(edges, edgesMaterial);
-
-    // Agrupa o cubo e as arestas em um único objeto
-    var cubeGroup = new THREE.Group();
-    cubeGroup.add(cube);
-    cubeGroup.add(edgesMesh);
-    scene.add(cubeGroup);
-    */
-    // NOVO: Inicializar mapa após carregar página
-    //initializeMap();
-    //Chama função para pegar novos dados
     fetchSensorData();
     //Define pausa entre as chamadas da função
-    setInterval(fetchSensorData, 1000);
+    setInterval(fetchSensorData, 2000);
 });
