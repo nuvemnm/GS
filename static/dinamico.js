@@ -57,8 +57,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Variáveis para o mapa
     // Coordenadas iniciais (centro do mapa)
-    const latInicial = -22.3568;
-    const lonInicial = -49.8574;
+    const latInicial = -22.3154;
+    const lonInicial = -49.0615;
 
     // 1. Inicializa o mapa
     // 'setView' define o centro e o nível de zoom inicial
